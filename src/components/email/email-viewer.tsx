@@ -5,6 +5,7 @@ import { format } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { EmailContent } from '@/components/ui/email-content';
 import { ArrowLeft, Trash2, Download, Code, Paperclip, X } from 'lucide-react';
 import type { Email } from '@/types/mail';
 
@@ -152,15 +153,12 @@ export function EmailViewer({
             </pre>
           </div>
         ) : email.html && email.html.length > 0 ? (
-          <div
-            className="p-4 prose prose-sm dark:prose-invert max-w-none"
-            dangerouslySetInnerHTML={{ __html: email.html.join('') }}
-          />
+          <div className="p-4">
+            <EmailContent html={email.html} text={email.text} />
+          </div>
         ) : (
           <div className="p-4">
-            <pre className="whitespace-pre-wrap font-sans text-sm">
-              {email.text || 'No content available'}
-            </pre>
+            <EmailContent text={email.text || 'No content available'} />
           </div>
         )}
       </ScrollArea>

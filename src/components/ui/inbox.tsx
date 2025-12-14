@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Email } from '@/types/mail';
+import { EmailContent } from '@/components/ui/email-content';
 
 interface InboxProps {
   emails: Email[];
@@ -306,26 +307,11 @@ export const Inbox: React.FC<InboxProps> = ({
                       </div>
 
                       <div className="prose prose-neutral dark:prose-invert max-w-none">
-                        {selectedEmail.html && selectedEmail.html[0] ? (
-                          <div
-                            className="text-sm md:text-base"
-                            dangerouslySetInnerHTML={{
-                              __html: selectedEmail.html[0],
-                            }}
-                          />
-                        ) : selectedEmail.text ? (
-                          <p className="text-foreground/90 whitespace-pre-wrap text-sm md:text-base">
-                            {selectedEmail.text}
-                          </p>
-                        ) : selectedEmail.intro ? (
-                          <p className="text-foreground/90 whitespace-pre-wrap text-sm md:text-base">
-                            {selectedEmail.intro}
-                          </p>
-                        ) : (
-                          <p className="text-muted-foreground italic text-sm md:text-base">
-                            No message content
-                          </p>
-                        )}
+                        <EmailContent
+                          html={selectedEmail.html}
+                          text={selectedEmail.text}
+                          intro={selectedEmail.intro}
+                        />
                       </div>
 
                       {selectedEmail.attachments &&
