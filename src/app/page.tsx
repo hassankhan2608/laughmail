@@ -25,7 +25,6 @@ export default function Home() {
     quickRegister,
     login,
     register,
-    logout,
     deleteAccount,
     selectEmail,
     deleteEmail,

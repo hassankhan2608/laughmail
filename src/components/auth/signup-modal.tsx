@@ -51,6 +51,7 @@ export const SignupModal: React.FC<SignupModalProps> = ({
     if (open && availableDomains.length === 0) {
       handleRefreshDomains();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
   useEffect(() => {
