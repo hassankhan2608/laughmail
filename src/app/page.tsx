@@ -287,10 +287,13 @@ export default function Home() {
             </p>
             <div className="flex items-center gap-4">
               <span className="text-sm text-muted-foreground">
-                by <span className="text-foreground font-medium">Zer0</span>
+                by{' '}
+                <span className="text-foreground font-medium">
+                  hassankhan2608
+                </span>
               </span>
               <a
-                href="https://github.com/while-basic/laughmail"
+                href="https://github.com/hassankhan2608/laughmail"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-muted-foreground hover:text-foreground transition-colors"
