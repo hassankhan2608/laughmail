@@ -9,6 +9,7 @@ import { FeaturesGrid } from '@/components/ui/features-grid';
 import { Inbox } from '@/components/ui/inbox';
 import { FlickeringGrid } from '@/components/ui/flickering-grid';
 import { fetchStats } from '@/lib/api/tf-api';
+import type { TempStats } from '@/types/mail';
 import { Sparkles, Mail, Github } from 'lucide-react';
 
 export default function Home() {
@@ -26,13 +27,13 @@ export default function Home() {
 
   const [copied, setCopied] = useState(false);
   const [nextRefreshIn, setNextRefreshIn] = useState(5);
-  const [statsTotal, setStatsTotal] = useState<string>();
+  const [stats, setStats] = useState<TempStats | null>(null);
 
   // Load global stats once; hide silently on failure
   useEffect(() => {
     fetchStats([], true, true)
-      .then((s) => setStatsTotal(s.totalFormatted))
-      .catch(() => setStatsTotal(undefined));
+      .then(setStats)
+      .catch(() => setStats(null));
   }, []);
 
   useEffect(() => {
@@ -197,6 +198,57 @@ export default function Home() {
       {/* Features Grid */}
       <FeaturesGrid />
 
+      {/* Stats */}
+      {stats && (
+        <section className="border-t border-border">
+          <div className="max-w-7xl mx-auto px-4 py-10">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 sm:gap-10 max-w-2xl mx-auto text-center">
+              <div className="space-y-1">
+                <p className="text-xs tracking-widest text-muted-foreground">
+                  TOTAL RECEIVED
+                </p>
+                <p className="text-2xl md:text-3xl font-bold">
+                  {stats.totalReceived.toLocaleString()}
+                </p>
+                <p className="text-xs text-muted-foreground">messages</p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-xs tracking-widest text-muted-foreground">
+                  TOTAL AVAILABLE
+                </p>
+                <p className="text-2xl md:text-3xl font-bold">
+                  {stats.totalFormatted}
+                </p>
+                <p className="text-xs text-muted-foreground">addresses</p>
+              </div>
+            </div>
+
+            <div className="mt-8 text-center space-y-1">
+              {(() => {
+                const entries =
+                  stats.breakdownFormatted
+                    ? Object.entries(stats.breakdownFormatted).filter(
+                      ([, count]) => count !== '0'
+                    )
+                    : [];
+                return entries.length > 0 ? (
+                  <p className="text-xs text-muted-foreground">
+                    {entries.map(([provider, count], i) => (
+                      <span key={provider}>
+                        {provider === 'highEduPl' ? 'high.edu.pl' : provider}
+                        {': '}
+                        <span className="text-foreground/80">{count}</span>
+                        {i < entries.length - 1 ? '  ·  ' : ''}
+                      </span>
+                    ))}
+                  </p>
+                ) : null;
+              })()}
+            </div>
+          </div>
+        </section>
+      )}
+
       {/* Footer */}
       <footer className="border-t border-border">
         <div className="max-w-7xl mx-auto px-4 py-12">
@@ -205,16 +257,7 @@ export default function Home() {
               <Mail className="h-5 w-5" />
               <span className="font-semibold">LaughMail</span>
             </div>
-            <p className="text-sm text-muted-foreground text-center">
-              Powered by the temp.tf mailbox pool. Emails live as long as the
-              provider account exists. No registration, no tracking.
-            </p>
             <div className="flex items-center gap-4">
-              {statsTotal && (
-                <span className="text-xs text-muted-foreground">
-                  {statsTotal} addresses available
-                </span>
-              )}
               <span className="text-sm text-muted-foreground">
                 by{' '}
                 <span className="text-foreground font-medium">
