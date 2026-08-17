@@ -2,298 +2,122 @@
 
 import { useMemo } from 'react';
 import DOMPurify from 'dompurify';
+import { attachmentProxyUrl } from '@/lib/api/tf-api';
 
 interface EmailContentProps {
-  html?: string[];
-  text?: string;
-  intro?: string;
+ body?: string;
+ bodyContentType?: string;
+ email?: string;
+ messageId?: string;
+ inlineCids?: Record<string, string>;
 }
 
 /**
- * Sanitizes and renders email HTML content safely.
- *
- * Features:
- * - XSS protection via DOMPurify
- * - Style isolation to prevent CSS leakage
- * - Proper link handling (opens in new tab)
- * - Image constraints to prevent layout breaks
- * - Text selection enabled for copying
- * - Dark mode compatible
+ * Renders temp.tf email body safely.
+ * - HTML: cid: sources rewritten to /api/tf/attachment proxy URLs, DOMPurify sanitized
+ * - Text: `[image: N]` tokens replaced with inline proxy images
  */
-export function EmailContent({ html, text, intro }: EmailContentProps) {
-  const sanitizedHtml = useMemo(() => {
-    if (!html || html.length === 0) return null;
+export function EmailContent({
+ body,
+ bodyContentType,
+ email,
+ messageId,
+ inlineCids,
+}: EmailContentProps) {
+ const isHtml = bodyContentType === 'html';
 
-    const rawHtml = html.join('');
+ const sanitizedHtml = useMemo(() => {
+  if (!body || !isHtml) return null;
 
-    // Configure DOMPurify
-    const clean = DOMPurify.sanitize(rawHtml, {
-      // Allow safe HTML elements
-      ALLOWED_TAGS: [
-        'a',
-        'b',
-        'i',
-        'u',
-        'em',
-        'strong',
-        'p',
-        'br',
-        'div',
-        'span',
-        'h1',
-        'h2',
-        'h3',
-        'h4',
-        'h5',
-        'h6',
-        'ul',
-        'ol',
-        'li',
-        'dl',
-        'dt',
-        'dd',
-        'table',
-        'thead',
-        'tbody',
-        'tfoot',
-        'tr',
-        'th',
-        'td',
-        'img',
-        'figure',
-        'figcaption',
-        'blockquote',
-        'pre',
-        'code',
-        'hr',
-        'sub',
-        'sup',
-        'small',
-        'mark',
-        'address',
-        'article',
-        'section',
-        'header',
-        'footer',
-        'center',
-        'font',
-      ],
-      // Allow safe attributes
-      ALLOWED_ATTR: [
-        'href',
-        'src',
-        'alt',
-        'title',
-        'width',
-        'height',
-        'style',
-        'class',
-        'id',
-        'target',
-        'rel',
-        'colspan',
-        'rowspan',
-        'cellpadding',
-        'cellspacing',
-        'border',
-        'align',
-        'valign',
-        'bgcolor',
-        'color',
-        'face',
-        'size',
-      ],
-      // Allow data URIs for images
-      ALLOW_DATA_ATTR: false,
-      // Transform links to open in new tab
-      ADD_ATTR: ['target', 'rel'],
-    });
-
-    // Post-process: add target="_blank" and rel="noopener" to all links
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(clean, 'text/html');
-
-    doc.querySelectorAll('a').forEach((link) => {
-      link.setAttribute('target', '_blank');
-      link.setAttribute('rel', 'noopener noreferrer');
-    });
-
-    // Add max-width to images to prevent overflow
-    doc.querySelectorAll('img').forEach((img) => {
-      const existingStyle = img.getAttribute('style') || '';
-      img.setAttribute(
-        'style',
-        `${existingStyle}; max-width: 100%; height: auto;`
-      );
-    });
-
-    return doc.body.innerHTML;
-  }, [html]);
-
-  // Render HTML content
-  if (sanitizedHtml) {
-    return (
-      <div className="email-content-wrapper">
-        <div
-          className="email-content"
-          dangerouslySetInnerHTML={{ __html: sanitizedHtml }}
-        />
-        <style jsx>{`
-          .email-content-wrapper {
-            /* Enable text selection for copying */
-            user-select: text;
-            -webkit-user-select: text;
-
-            /* Contain styles from email */
-            contain: content;
-
-            /* Base typography */
-            font-size: 14px;
-            line-height: 1.6;
-          }
-
-          .email-content {
-            /* Reset some inherited styles */
-            all: initial;
-            display: block;
-            font-family: inherit;
-            font-size: inherit;
-            line-height: inherit;
-            color: inherit;
-
-            /* Word wrapping */
-            word-wrap: break-word;
-            overflow-wrap: break-word;
-          }
-
-          /* Links */
-          .email-content :global(a) {
-            color: hsl(var(--primary));
-            text-decoration: underline;
-            text-underline-offset: 2px;
-          }
-
-          .email-content :global(a:hover) {
-            opacity: 0.8;
-          }
-
-          /* Images */
-          .email-content :global(img) {
-            max-width: 100%;
-            height: auto;
-            border-radius: 4px;
-          }
-
-          /* Tables (common in email) */
-          .email-content :global(table) {
-            border-collapse: collapse;
-            max-width: 100%;
-            overflow-x: auto;
-            display: block;
-          }
-
-          .email-content :global(td),
-          .email-content :global(th) {
-            padding: 8px;
-            border: 1px solid hsl(var(--border));
-          }
-
-          /* Paragraphs */
-          .email-content :global(p) {
-            margin: 0 0 1em 0;
-          }
-
-          /* Headings */
-          .email-content :global(h1),
-          .email-content :global(h2),
-          .email-content :global(h3),
-          .email-content :global(h4),
-          .email-content :global(h5),
-          .email-content :global(h6) {
-            margin: 1em 0 0.5em 0;
-            font-weight: 600;
-            line-height: 1.3;
-          }
-
-          /* Lists */
-          .email-content :global(ul),
-          .email-content :global(ol) {
-            margin: 0 0 1em 0;
-            padding-left: 1.5em;
-          }
-
-          .email-content :global(li) {
-            margin-bottom: 0.25em;
-          }
-
-          /* Blockquotes */
-          .email-content :global(blockquote) {
-            margin: 1em 0;
-            padding-left: 1em;
-            border-left: 3px solid hsl(var(--border));
-            color: hsl(var(--muted-foreground));
-          }
-
-          /* Code blocks */
-          .email-content :global(pre) {
-            background: hsl(var(--muted));
-            padding: 1em;
-            border-radius: 6px;
-            overflow-x: auto;
-            font-family: monospace;
-            font-size: 0.9em;
-          }
-
-          .email-content :global(code) {
-            background: hsl(var(--muted));
-            padding: 0.2em 0.4em;
-            border-radius: 3px;
-            font-family: monospace;
-            font-size: 0.9em;
-          }
-
-          /* Horizontal rule */
-          .email-content :global(hr) {
-            border: none;
-            border-top: 1px solid hsl(var(--border));
-            margin: 1.5em 0;
-          }
-
-          /* Override potential background colors in dark mode */
-          @media (prefers-color-scheme: dark) {
-            .email-content :global([style*='background']),
-            .email-content :global([bgcolor]) {
-              background: transparent !important;
-              background-color: transparent !important;
-            }
-
-            .email-content :global([style*='color: #000']),
-            .email-content :global([style*='color:#000']),
-            .email-content :global([style*='color: black']),
-            .email-content :global([color='black']),
-            .email-content :global([color='#000']) {
-              color: inherit !important;
-            }
-          }
-        `}</style>
-      </div>
-    );
+  let rawHtml = body;
+  // Rewrite cid: image sources to proxy URLs
+  if (email && messageId && inlineCids && Object.keys(inlineCids).length > 0) {
+   rawHtml = rawHtml.replace(
+    /src=["']cid:([^"'>\s]+)["']/gi,
+    (_match, cid: string) => {
+     const cleaned = cid.trim().replace(/^<|>$/g, '');
+     const attachmentId = inlineCids[cleaned];
+     if (!attachmentId) {
+      return 'src="data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\'/%3E"';
+     }
+     return `src="${attachmentProxyUrl(email, messageId, attachmentId)}"`;
+    }
+   );
   }
 
-  // Render plain text content
-  const textContent = text || intro;
-  if (textContent) {
-    return (
-      <div className="email-text-content select-text">
-        <pre className="whitespace-pre-wrap font-sans text-sm leading-relaxed text-foreground/90">
-          {textContent}
-        </pre>
-      </div>
-    );
-  }
+  const clean = DOMPurify.sanitize(rawHtml, {
+   ALLOWED_TAGS: [
+    'a', 'b', 'i', 'u', 'em', 'strong', 'p', 'br', 'div', 'span',
+    'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'ul', 'ol', 'li', 'dl', 'dt',
+    'dd', 'table', 'thead', 'tbody', 'tfoot', 'tr', 'th', 'td', 'img',
+    'figure', 'figcaption', 'blockquote', 'pre', 'code', 'hr', 'sub',
+    'sup', 'small', 'mark', 'address', 'article', 'section', 'header',
+    'footer', 'center', 'font',
+   ],
+   ALLOWED_ATTR: [
+    'href', 'src', 'alt', 'title', 'width', 'height', 'style', 'class',
+    'id', 'target', 'rel', 'colspan', 'rowspan', 'cellpadding',
+    'cellspacing', 'border', 'align', 'valign', 'bgcolor', 'color',
+    'face', 'size',
+   ],
+   ALLOW_DATA_ATTR: false,
+   ADD_ATTR: ['target', 'rel'],
+  });
 
-  // No content
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(clean, 'text/html');
+  doc.querySelectorAll('a').forEach((link) => {
+   link.setAttribute('target', '_blank');
+   link.setAttribute('rel', 'noopener noreferrer');
+  });
+  doc.querySelectorAll('img').forEach((img) => {
+   img.style.maxWidth = '100%';
+   img.style.height = 'auto';
+  });
+  return doc.body.innerHTML;
+ }, [body, isHtml, email, messageId, inlineCids]);
+
+ const textContent = useMemo(() => {
+  if (!body || isHtml) return null;
+  if (
+   !email ||
+   !messageId ||
+   !inlineCids ||
+   Object.keys(inlineCids).length === 0
+  ) {
+   return body;
+  }
+  const attachmentIds = Object.values(inlineCids);
+  let index = 0;
+  return body
+   .replace(/&/g, '&amp;')
+   .replace(/</g, '&lt;')
+   .replace(/>/g, '&gt;')
+   .replace(/\n/g, '<br>\n')
+   .replace(/\[image:\s*([^\]]+)\]/gi, () => {
+    const attachmentId = attachmentIds[index++];
+    if (!attachmentId) return '';
+    return `<img src="${attachmentProxyUrl(email, messageId, attachmentId)}" alt="inline" style="max-width:100%;height:auto;" />`;
+   });
+ }, [body, isHtml, email, messageId, inlineCids]);
+
+ if (sanitizedHtml) {
   return (
-    <p className="text-muted-foreground italic text-sm">No message content</p>
+   <div
+    className="email-body break-words max-w-full overflow-auto [&_img]:max-w-full [&_img]:h-auto"
+    dangerouslySetInnerHTML={{ __html: sanitizedHtml }}
+   />
   );
+ }
+
+ if (textContent) {
+  return (
+   <div
+    className="whitespace-pre-wrap break-words max-w-full [&_img]:max-w-full [&_img]:h-auto"
+    dangerouslySetInnerHTML={{ __html: textContent }}
+   />
+  );
+ }
+
+ return <p className="text-muted-foreground italic text-sm">(No content)</p>;
 }
