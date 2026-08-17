@@ -8,84 +8,76 @@ import { EmailGenerator } from '@/components/ui/email-generator';
 import { FeaturesGrid } from '@/components/ui/features-grid';
 import { Inbox } from '@/components/ui/inbox';
 import { FlickeringGrid } from '@/components/ui/flickering-grid';
-import { LoginModal } from '@/components/auth/login-modal';
-import { SignupModal } from '@/components/auth/signup-modal';
-import { SettingsDialog } from '@/components/ui/settings-dialog';
-import { AccountMenu } from '@/components/layout/account-menu';
-import { Button } from '@/components/ui/button';
-import { Email } from '@/types/mail';
-import { Mail, Sparkles, LogIn, UserPlus, Github, Loader2 } from 'lucide-react';
+import { fetchStats } from '@/lib/api/tf-api';
+import { Sparkles, Mail, Github } from 'lucide-react';
 
 export default function Home() {
   const {
     session,
     emails,
     isLoading,
-    isAuthenticated,
-    quickRegister,
-    login,
-    register,
-    deleteAccount,
+    error,
+    generate,
+    recover,
     selectEmail,
-    deleteEmail,
-    downloadAttachment,
     refresh,
-    getDomains,
-    clearAllEmails,
+    downloadAttachment,
   } = useMailSession();
 
   const [copied, setCopied] = useState(false);
-  const [showLogin, setShowLogin] = useState(false);
-  const [showSignup, setShowSignup] = useState(false);
-  const [showSettings, setShowSettings] = useState(false);
   const [nextRefreshIn, setNextRefreshIn] = useState(5);
   const [errorMessage, setErrorMessage] = useState<string>();
+  const [statsTotal, setStatsTotal] = useState<string>();
 
-  // Poll countdown timer
+  // Load global stats once; hide silently on failure
   useEffect(() => {
-    if (!isAuthenticated) return;
+    fetchStats([], true, true)
+      .then((s) => setStatsTotal(s.totalFormatted))
+      .catch(() => setStatsTotal(undefined));
+  }, []);
 
+  useEffect(() => {
+    if (!session?.address) return;
     const interval = setInterval(() => {
-      setNextRefreshIn((prev) => {
-        if (prev <= 1) {
-          return 5;
-        }
-        return prev - 1;
-      });
+      setNextRefreshIn((prev) => (prev <= 1 ? 5 : prev - 1));
     }, 1000);
-
     return () => clearInterval(interval);
-  }, [isAuthenticated]);
+  }, [session?.address]);
+
+  useEffect(() => {
+    setErrorMessage(error ?? undefined);
+  }, [error]);
 
   const handleCopy = () => {
-    if (session?.account.address) {
-      navigator.clipboard.writeText(session.account.address);
+    if (session?.address) {
+      navigator.clipboard.writeText(session.address);
       setCopied(true);
       toast.success('Email address copied to clipboard!');
       setTimeout(() => setCopied(false), 2000);
     }
   };
 
-  const handleNewEmail = async () => {
+  const handleGenerate = async (
+    providers: Parameters<typeof generate>[0],
+    dot: boolean,
+    plus: boolean
+  ) => {
+    setErrorMessage(undefined);
+    await generate(providers, dot, plus);
+  };
+
+  const handleRecover = async (address: string) => {
     setErrorMessage(undefined);
     try {
-      await quickRegister();
+      await recover(address);
     } catch {
-      setErrorMessage('Failed to generate email. Please try again.');
+      setErrorMessage('Could not recover that address.');
     }
   };
 
   const handleRefresh = () => {
     refresh();
     setNextRefreshIn(5);
-  };
-
-  const handleEmailClick = async (email: Email) => {
-    await selectEmail(email);
-  };
-
-  const handleDownloadAttachment = async (url: string, filename: string) => {
-    await downloadAttachment(url, filename);
   };
 
   return (
@@ -108,37 +100,15 @@ export default function Home() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Mail className="h-6 w-6" />
-              <span className="text-xl font-bold tracking-tight">
-                LaughMail
-              </span>
+              <span className="text-xl font-bold tracking-tight">LaughMail</span>
             </div>
 
             <nav className="flex items-center gap-3">
-              {isAuthenticated && session ? (
-                <AccountMenu
-                  email={session.account.address}
-                  isTemporary={true}
-                  storageUsed={session.account.used}
-                  storageQuota={session.account.quota}
-                  onLogin={() => setShowLogin(true)}
-                  onSignup={() => setShowSignup(true)}
-                  onSettings={() => setShowSettings(true)}
-                />
-              ) : (
-                <>
-                  <Button
-                    variant="outline"
-                    onClick={() => setShowLogin(true)}
-                    className="gap-2"
-                  >
-                    <LogIn className="h-4 w-4" />
-                    <span className="hidden sm:inline">Login</span>
-                  </Button>
-                  <Button onClick={() => setShowSignup(true)} className="gap-2">
-                    <UserPlus className="h-4 w-4" />
-                    <span className="hidden sm:inline">Sign Up</span>
-                  </Button>
-                </>
+              {session?.address && (
+                <span className="hidden sm:inline-flex items-center gap-2 px-3 py-1.5 rounded-md border bg-card text-xs text-muted-foreground">
+                  <div className="h-2 w-2 rounded-full bg-emerald-500" />
+                  Active
+                </span>
               )}
             </nav>
           </div>
@@ -147,7 +117,6 @@ export default function Home() {
 
       {/* Hero Section */}
       <section className="relative border-b overflow-hidden">
-        {/* Flickering Grid Background - extended slightly beyond bounds for perfect edge coverage */}
         <div className="absolute -inset-2 w-[calc(100%+16px)] h-[calc(100%+16px)]">
           <FlickeringGrid
             className="z-0 absolute inset-0"
@@ -157,7 +126,6 @@ export default function Home() {
             maxOpacity={0.6}
             flickerChance={0.4}
           />
-          {/* Radial gradient mask - fades grid from edges to center, clear in middle */}
           <div
             className="absolute inset-0 z-10 pointer-events-none"
             style={{
@@ -188,86 +156,50 @@ export default function Home() {
             </h1>
 
             <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto">
-              Generate a temporary email address instantly. No registration
-              required. Protect your privacy and keep your real inbox clean.
+              Generate a temporary email address on real Outlook, Hotmail &amp;
+              Gmail. No registration. Recover your last address anytime.
             </p>
-
-            {!isAuthenticated && (
-              <div className="flex flex-wrap gap-4 justify-center pt-4">
-                <Button
-                  onClick={handleNewEmail}
-                  size="lg"
-                  className="min-w-[200px]"
-                  disabled={isLoading}
-                >
-                  {isLoading ? (
-                    <>
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Generating...
-                    </>
-                  ) : (
-                    'Generate Email'
-                  )}
-                </Button>
-                <Button
-                  onClick={() => setShowLogin(true)}
-                  variant="outline"
-                  size="lg"
-                  className="min-w-[200px]"
-                  disabled={isLoading}
-                >
-                  Login to Existing
-                </Button>
-              </div>
-            )}
           </motion.div>
         </div>
       </section>
 
-      {/* Email Generator Section (only when authenticated) */}
-      {isAuthenticated && (
-        <EmailGenerator
-          email={session?.account.address || ''}
-          onCopy={handleCopy}
-          onGenerate={handleNewEmail}
-          copied={copied}
-          isLoading={isLoading}
-          errorMessage={errorMessage}
-        />
-      )}
+      {/* Email Generator */}
+      <EmailGenerator
+        email={session?.address || ''}
+        onCopy={handleCopy}
+        onGenerate={handleGenerate}
+        onRecover={handleRecover}
+        copied={copied}
+        isLoading={isLoading}
+        errorMessage={errorMessage}
+      />
 
       {/* Divider Grid */}
-      {isAuthenticated && (
-        <section className="relative">
-          <div
-            className="absolute left-0 top-0 bottom-0 w-px bg-border hidden lg:block"
-            style={{ left: 'calc(50% - 40rem)' }}
-          />
-          <div
-            className="absolute right-0 top-0 bottom-0 w-px bg-border hidden lg:block"
-            style={{ right: 'calc(50% - 40rem)' }}
-          />
-
-          <div className="max-w-7xl mx-auto px-4 relative">
-            {/* Horizontal divider line connecting to side borders */}
-            <div className="absolute left-0 right-0 top-1/2 h-px bg-border" />
-            <div className="h-12" />
-          </div>
-        </section>
-      )}
-
-      {/* Inbox Section (only when authenticated) */}
-      {isAuthenticated && (
-        <Inbox
-          emails={emails}
-          onRefresh={handleRefresh}
-          onDelete={deleteEmail}
-          onEmailClick={handleEmailClick}
-          onDownloadAttachment={handleDownloadAttachment}
-          isRefreshing={isLoading}
-          nextRefreshIn={nextRefreshIn}
+      <section className="relative">
+        <div
+          className="absolute left-0 top-0 bottom-0 w-px bg-border hidden lg:block"
+          style={{ left: 'calc(50% - 40rem)' }}
         />
-      )}
+        <div
+          className="absolute right-0 top-0 bottom-0 w-px bg-border hidden lg:block"
+          style={{ right: 'calc(50% - 40rem)' }}
+        />
+        <div className="max-w-7xl mx-auto px-4 relative">
+          <div className="absolute left-0 right-0 top-1/2 h-px bg-border" />
+          <div className="h-12" />
+        </div>
+      </section>
+
+      {/* Inbox */}
+      <Inbox
+        emails={emails}
+        address={session?.address || ''}
+        onRefresh={handleRefresh}
+        onEmailClick={selectEmail}
+        onDownloadAttachment={downloadAttachment}
+        isRefreshing={isLoading}
+        nextRefreshIn={session?.address ? nextRefreshIn : undefined}
+      />
 
       {/* Features Grid */}
       <FeaturesGrid />
@@ -281,10 +213,15 @@ export default function Home() {
               <span className="font-semibold">LaughMail</span>
             </div>
             <p className="text-sm text-muted-foreground text-center">
-              Built with Next.js and the Mail.tm API. Emails are temporary and
-              will be deleted automatically.
+              Powered by the temp.tf mailbox pool. Emails live as long as the
+              provider account exists. No registration, no tracking.
             </p>
             <div className="flex items-center gap-4">
+              {statsTotal && (
+                <span className="text-xs text-muted-foreground">
+                  {statsTotal} addresses available
+                </span>
+              )}
               <span className="text-sm text-muted-foreground">
                 by{' '}
                 <span className="text-foreground font-medium">
@@ -304,39 +241,6 @@ export default function Home() {
           </div>
         </div>
       </footer>
-
-      {/* Modals */}
-      <LoginModal
-        open={showLogin}
-        onOpenChange={setShowLogin}
-        onLogin={login}
-      />
-      <SignupModal
-        open={showSignup}
-        onOpenChange={setShowSignup}
-        onSignup={register}
-        getDomains={async () => {
-          const domains = await getDomains();
-          return domains.map((d) => d.domain);
-        }}
-      />
-
-      {session && (
-        <SettingsDialog
-          open={showSettings}
-          onOpenChange={setShowSettings}
-          email={session.account.address}
-          isTemporary={true}
-          accountId={session.account.id}
-          createdAt={new Date(session.account.createdAt)}
-          updatedAt={new Date(session.account.updatedAt)}
-          storageUsed={session.account.used}
-          storageQuota={session.account.quota}
-          messageCount={emails.length}
-          onClearAllEmails={clearAllEmails}
-          onDeleteAccount={deleteAccount}
-        />
-      )}
     </div>
   );
 }
