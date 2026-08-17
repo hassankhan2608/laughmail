@@ -26,7 +26,6 @@ export default function Home() {
 
   const [copied, setCopied] = useState(false);
   const [nextRefreshIn, setNextRefreshIn] = useState(5);
-  const [errorMessage, setErrorMessage] = useState<string>();
   const [statsTotal, setStatsTotal] = useState<string>();
 
   // Load global stats once; hide silently on failure
@@ -44,10 +43,6 @@ export default function Home() {
     return () => clearInterval(interval);
   }, [session?.address]);
 
-  useEffect(() => {
-    setErrorMessage(error ?? undefined);
-  }, [error]);
-
   const handleCopy = () => {
     if (session?.address) {
       navigator.clipboard.writeText(session.address);
@@ -62,16 +57,14 @@ export default function Home() {
     dot: boolean,
     plus: boolean
   ) => {
-    setErrorMessage(undefined);
     await generate(providers, dot, plus);
   };
 
   const handleRecover = async (address: string) => {
-    setErrorMessage(undefined);
     try {
       await recover(address);
     } catch {
-      setErrorMessage('Could not recover that address.');
+      /* hook already surfaces the error */
     }
   };
 
@@ -171,7 +164,7 @@ export default function Home() {
         onRecover={handleRecover}
         copied={copied}
         isLoading={isLoading}
-        errorMessage={errorMessage}
+        errorMessage={error ?? undefined}
       />
 
       {/* Divider Grid */}

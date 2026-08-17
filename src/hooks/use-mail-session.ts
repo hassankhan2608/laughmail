@@ -10,7 +10,6 @@ import {
 import {
   saveSession,
   getSession,
-  clearSession,
   isSessionValid,
 } from '@/lib/session';
 import { toast } from 'sonner';

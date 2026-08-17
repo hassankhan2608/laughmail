@@ -36,31 +36,31 @@ export const FeaturesGrid: React.FC = () => {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 auto-rows-auto gap-4">
             <PlusCard
               title="Instant Generation"
-              description="Get a temporary email address instantly with no registration, no sign-up, and no personal information required. Start receiving emails immediately."
+              description="Get a temporary email address instantly with no registration, no sign-up, and no personal information required. Addresses are built from temp.tf's own pool of real provider accounts—Outlook, Hotmail, Gmail and high.edu.pl."
               icon={<Sparkles className="h-8 w-8" />}
               className="lg:col-span-3 lg:row-span-2"
             />
             <PlusCard
               title="Auto Inbox"
-              description="Emails appear automatically in your inbox. No refresh needed, no waiting. Real-time delivery."
+              description="Emails appear automatically in your inbox. No refresh needed, no waiting. The inbox polls every 5 seconds, and real Outlook/Gmail delivery means mail actually lands."
               icon={<Inbox className="h-8 w-8" />}
               className="lg:col-span-3 lg:row-span-1"
             />
             <PlusCard
-              title="60-Minute Lifetime"
-              description="Your temporary address stays active for 60 minutes, giving you plenty of time for verifications and sign-ups."
+              title="Long-Lived Aliases"
+              description="Your plus/dot alias keeps receiving mail as long as the underlying provider account exists—no 60-minute expiry, plenty of time for verifications and sign-ups."
               icon={<Clock className="h-8 w-8" />}
               className="lg:col-span-2 lg:row-span-1"
             />
             <PlusCard
               title="Privacy First"
-              description="No data stored, no tracking, no logs. Everything is automatically deleted after expiration."
+              description="Only messages for your generated alias are shown. Your real base address is never exposed, no registration, no tracking, no logs."
               icon={<CheckCircle2 className="h-8 w-8" />}
               className="lg:col-span-2 lg:row-span-1"
             />
             <PlusCard
               title="One-Click Copy"
-              description="Copy your temporary address to clipboard with a single click. Use it anywhere you need disposable email."
+              description="Copy your temporary address to clipboard with a single click. Use it anywhere you need disposable email—recover it later on any device."
               icon={<Copy className="h-8 w-8" />}
               className="lg:col-span-2 lg:row-span-1"
             />
