@@ -1,27 +1,24 @@
-import type { Session } from '@/types/mail';
+import type { TempSession } from '@/types/mail';
 
-const SESSION_KEY = 'laughmail_session';
+const SESSION_KEY = 'laughmail_address';
 
-export function saveSession(session: Session): void {
+export function saveSession(session: TempSession): void {
   if (typeof window === 'undefined') return;
   localStorage.setItem(SESSION_KEY, JSON.stringify(session));
 }
 
-export function getSession(): Session | null {
+export function getSession(): TempSession | null {
   if (typeof window === 'undefined') return null;
 
   try {
     const stored = localStorage.getItem(SESSION_KEY);
     if (!stored) return null;
 
-    const session: Session = JSON.parse(stored);
-
-    // Check if session is expired
-    if (session.expiresAt < Date.now()) {
+    const session: TempSession = JSON.parse(stored);
+    if (typeof session?.address !== 'string' || !session.address) {
       clearSession();
       return null;
     }
-
     return session;
   } catch {
     clearSession();
@@ -34,7 +31,6 @@ export function clearSession(): void {
   localStorage.removeItem(SESSION_KEY);
 }
 
-export function isSessionValid(session: Session | null): boolean {
-  if (!session) return false;
-  return session.expiresAt > Date.now();
+export function isSessionValid(session: TempSession | null): boolean {
+  return !!session && typeof session.address === 'string' && session.address.length > 0;
 }
